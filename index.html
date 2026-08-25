@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Termometro de Frota LOG20</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="logo">🌡️</div>
+    <div>
+      <h1>Termometro de Frota — LOG20</h1>
+      <p class="sub">Armazem + Rota, num relatorio leve. Sem depender do Excel pesado.</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="ranking">Ranking Atual</button>
+    <button class="tab" data-tab="kpis">Analise de KPIs</button>
+    <button class="tab" data-tab="historico">Historico</button>
+  </nav>
+</div>
+
+<p class="hint" style="margin:10px 22px 0;color:var(--accent)">Visualizacao somente leitura — dados publicados em 25/08/2026 09:17. Pra atualizar, use o botao "Publicar agora" no programa local.</p>
+<main>
+
+  <!-- ==================== NOVO PROCESSAMENTO ==================== -->
+  <section class="panel" id="panel-novo">
+    <div class="pub-card">
+      <h3>Publicar para Web <span class="badge blue">GitHub + Netlify</span></h3>
+      <p class="hint" style="margin:0">
+        Gera uma versao somente-leitura com os periodos ja processados e envia pro repositorio
+        configurado em <code>web-public/</code>. O site publico atualiza sozinho em ~1 minuto.
+      </p>
+      <div class="linha">
+        <button id="pub-btn" class="btn primary">⬆ Publicar agora</button>
+        <a id="pub-link" href="#" target="_blank" class="btn" style="display:none">🌐 Abrir pagina publica</a>
+        <span id="pub-status"></span>
+      </div>
+    </div>
+
+    <h2>Importar os dois termometros</h2>
+    <p class="hint">
+      Arraste os dois arquivos do Termometro (Armazem e Transportes) — o programa descobre sozinho
+      qual e qual pelas abas internas, nao importa o nome nem o formato do arquivo. Depois informe
+      de qual mes e quinzena eles sao.
+    </p>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="input-arquivos" accept=".xlsb,.xlsx,.xlsm,.xls" multiple>
+      <div class="dz-inner">
+        <span class="dz-icon">📂</span>
+        <p><b>Clique</b> ou arraste aqui os 2 arquivos Excel</p>
+        <p class="hint" style="margin:0">Um do Armazem e um da Rota (Transportes) — .xlsb, .xlsx, .xlsm ou .xls</p>
+      </div>
+      <div class="dz-arquivos" id="dz-arquivos"></div>
+    </div>
+
+    <div class="periodo-form">
+      <label>Ano
+        <input type="number" id="in-ano" min="2023" max="2035">
+      </label>
+      <label>Mes
+        <select id="in-mes"></select>
+      </label>
+      <div>
+        <label style="margin-bottom:4px">Quinzena</label>
+        <div class="quinzena-opcoes">
+          <label><input type="radio" name="quinzena" value="1"> 1a — Parcial</label>
+          <label><input type="radio" name="quinzena" value="2" checked> 2a — Oficial (fechamento)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button class="btn primary" id="btn-processar" disabled>Processar</button>
+    </div>
+
+    <p id="status-processamento" class="hint"></p>
+
+    <h3>Periodos ja importados</h3>
+    <p class="hint" id="importados-vazio">Nenhum periodo importado ainda.</p>
+    <div class="tabela-wrap" id="importados-wrap" style="display:none">
+      <table id="tabela-importados">
+        <thead><tr>
+          <th>Periodo</th><th class="num">CDDs LOG20</th><th>Processado em</th><th>Acoes</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ==================== RANKING ATUAL ==================== -->
+  <section class="panel active" id="panel-ranking">
+    <div id="ranking-vazio" class="vazio">
+      Processe os dois arquivos na aba "Novo Processamento", ou escolha um periodo no Historico.
+    </div>
+
+    <div id="ranking-conteudo" style="display:none">
+      <div class="ranking-cabecalho">
+        <div>
+          <h2 id="ranking-titulo">Ranking LOG20</h2>
+          <p class="hint" id="ranking-subtitulo" style="margin:0"></p>
+        </div>
+        <div class="filtro-periodo">
+          <label>Periodo</label>
+          <div id="sel-periodo-ranking"></div>
+        </div>
+      </div>
+
+      <div class="cards" id="ranking-cards"></div>
+
+      <div class="ranking-layout">
+        <div class="ranking-principal">
+          <h3>Painel — panorama medio (Armazem + Rota)</h3>
+          <div class="tabela-wrap">
+            <table id="tabela-painel">
+              <thead><tr>
+                <th class="center">#</th><th>CDD</th><th>GEO</th><th class="center">Tier</th>
+                <th class="num">Pontos Armazem</th><th class="num">Pontos Rota</th>
+                <th class="num">Panorama Medio</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <h3>Ranking interno LOG20 (comparando so entre CDDs da LOG20)</h3>
+          <div class="grid-3">
+            <div>
+              <p class="hint" style="margin:0 0 6px">Somente Armazem</p>
+              <div class="tabela-wrap">
+                <table id="tabela-interno-armazem">
+                  <thead><tr><th class="center">#</th><th>CDD</th><th class="num">Pontos</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <p class="hint" style="margin:0 0 6px">Somente Rota</p>
+              <div class="tabela-wrap">
+                <table id="tabela-interno-rota">
+                  <thead><tr><th class="center">#</th><th>CDD</th><th class="num">Pontos</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <p class="hint" style="margin:0 0 6px">Panorama (Media)</p>
+              <div class="tabela-wrap">
+                <table id="tabela-interno-media">
+                  <thead><tr><th class="center">#</th><th>CDD</th><th class="num">Pontos</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <h3>Ranking nacional (Brasil) — separado por tier</h3>
+          <p class="hint" style="margin:0 0 6px">Tier T1</p>
+          <div class="tabela-wrap">
+            <table id="tabela-nacional-t1">
+              <thead>
+                <tr class="grupo">
+                  <th rowspan="2">CDD</th>
+                  <th colspan="2" class="grupo-armazem divisor">Armazem</th>
+                  <th colspan="2" class="grupo-rota divisor">Rota</th>
+                  <th colspan="2" class="grupo-panorama divisor">Panorama</th>
+                </tr>
+                <tr class="subcabecalho">
+                  <th class="num sub grupo-armazem divisor">Pontos</th><th class="num sub grupo-armazem">Rank Nac.</th>
+                  <th class="num sub grupo-rota divisor">Pontos</th><th class="num sub grupo-rota">Rank Nac.</th>
+                  <th class="num sub grupo-panorama divisor">Pontos</th><th class="num sub grupo-panorama">Rank Nac.</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint" style="margin:16px 0 6px">Tier T2</p>
+          <div class="tabela-wrap">
+            <table id="tabela-nacional-t2">
+              <thead>
+                <tr class="grupo">
+                  <th rowspan="2">CDD</th>
+                  <th colspan="2" class="grupo-armazem divisor">Armazem</th>
+                  <th colspan="2" class="grupo-rota divisor">Rota</th>
+                  <th colspan="2" class="grupo-panorama divisor">Panorama</th>
+                </tr>
+                <tr class="subcabecalho">
+                  <th class="num sub grupo-armazem divisor">Pontos</th><th class="num sub grupo-armazem">Rank Nac.</th>
+                  <th class="num sub grupo-rota divisor">Pontos</th><th class="num sub grupo-rota">Rank Nac.</th>
+                  <th class="num sub grupo-panorama divisor">Pontos</th><th class="num sub grupo-panorama">Rank Nac.</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="ranking-lateral">
+          <div class="imagem-preview">
+            <img id="img-whatsapp" alt="Ranking LOG20 - imagem para WhatsApp">
+          </div>
+          <div class="acoes coluna">
+            <a class="btn primary" id="link-excel" href="#" target="_blank">⬇️ Baixar relatorio Excel</a>
+            <a class="btn" id="link-imagem" href="#" target="_blank">🖼️ Baixar imagem p/ WhatsApp</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== ANALISE DE KPIS ==================== -->
+  <section class="panel" id="panel-kpis">
+    <div id="kpis-vazio" class="vazio">
+      Processe um periodo (ou escolha um no Historico) para ver a analise de KPIs.
+    </div>
+
+    <div id="kpis-conteudo" style="display:none">
+      <div class="ranking-cabecalho">
+        <div>
+          <h2>Analise de KPIs — onde a LOG20 esta melhor e pior</h2>
+          <p class="hint" id="kpis-subtitulo" style="margin:0"></p>
+        </div>
+        <div class="filtro-periodo">
+          <label>Periodo</label>
+          <div id="sel-periodo-kpis"></div>
+        </div>
+      </div>
+
+      <p class="hint">
+        Cada KPI usa os pontos que o proprio G-Info ja atribui (0 a 10 ou 0 a 20, conforme a regra),
+        normalizados aqui em % do maximo observado — assim da pra comparar KPIs com escalas diferentes
+        (ex.: MTTR vale ate 10 pontos, Preventiva vale ate 20). Ordenado do pior pro melhor.
+      </p>
+
+      <h3>Ranking de KPIs — Armazem</h3>
+      <div id="ranking-kpis-armazem" class="kpi-ranking"></div>
+
+      <h3>Ranking de KPIs — Rota</h3>
+      <div id="ranking-kpis-rota" class="kpi-ranking"></div>
+
+      <h3>Detalhe por CDD — Armazem</h3>
+      <div class="tabela-wrap">
+        <table id="tabela-detalhe-armazem"><thead><tr></tr></thead><tbody></tbody></table>
+      </div>
+
+      <h3>Detalhe por CDD — Rota</h3>
+      <div class="tabela-wrap">
+        <table id="tabela-detalhe-rota"><thead><tr></tr></thead><tbody></tbody></table>
+      </div>
+
+      <h3>Evolucao por KPI (estou melhorando ou piorando?)</h3>
+      <p class="hint" style="margin-top:-6px">
+        So considera periodos oficiais (2a quinzena) — a 1a quinzena e uma previa antes do fechamento do mes.
+      </p>
+      <p class="hint" id="evolucao-kpis-vazio">Processe pelo menos 2 periodos oficiais para ver a evolucao.</p>
+
+      <div id="evolucao-kpis-blocos" style="display:none">
+        <p class="hint" style="margin:0 0 6px"><b>Armazem</b></p>
+        <div class="grafico-filtros">
+          <div class="filtro"><label>KPI</label><div id="kpi-sel-metrica-armazem"></div></div>
+          <div class="filtro"><label>Periodos</label><div id="kpi-sel-periodos-armazem"></div></div>
+          <div class="filtro"><label>Unidades (CDD)</label><div id="kpi-sel-unidades-armazem"></div></div>
+        </div>
+        <div class="grafico-svg-wrap" id="kpi-grafico-armazem"></div>
+        <div class="grafico-legenda" id="kpi-legenda-armazem"></div>
+
+        <p class="hint" style="margin:26px 0 6px"><b>Rota</b></p>
+        <div class="grafico-filtros">
+          <div class="filtro"><label>KPI</label><div id="kpi-sel-metrica-rota"></div></div>
+          <div class="filtro"><label>Periodos</label><div id="kpi-sel-periodos-rota"></div></div>
+          <div class="filtro"><label>Unidades (CDD)</label><div id="kpi-sel-unidades-rota"></div></div>
+        </div>
+        <div class="grafico-svg-wrap" id="kpi-grafico-rota"></div>
+        <div class="grafico-legenda" id="kpi-legenda-rota"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== HISTORICO ==================== -->
+  <section class="panel" id="panel-historico">
+    <h2>Historico — evolucao da LOG20</h2>
+    <p class="hint">
+      Panorama medio (Armazem + Rota) de cada CDD ao longo dos periodos oficiais (2a quinzena) —
+      a 1a quinzena e uma previa antes do fechamento do mes e nao entra aqui.
+    </p>
+
+    <p class="hint" id="evolucao-panorama-vazio">Processe pelo menos 2 periodos oficiais para ver a evolucao.</p>
+
+    <div id="evolucao-panorama-bloco" style="display:none">
+      <div class="grafico-filtros">
+        <div class="filtro"><label>Periodos</label><div id="panorama-sel-periodos"></div></div>
+        <div class="filtro"><label>Unidades (CDD)</label><div id="panorama-sel-unidades"></div></div>
+      </div>
+      <div class="grafico-svg-wrap" id="panorama-grafico"></div>
+      <div class="grafico-legenda" id="panorama-legenda"></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast oculto" id="toast"></div>
+
+<div class="modal oculto" id="modal-confirmar">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-fechar">&times;</button>
+    <h2>Confirmar processamento</h2>
+    <p id="modal-texto" class="hint"></p>
+    <p id="modal-aviso-sobrescrever" class="aviso oculto"></p>
+    <div class="acoes">
+      <button class="btn primary" id="modal-confirmar-btn">Sim, processar</button>
+      <button class="btn" id="modal-cancelar-btn">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="dados.js"></script>
+<script src="api-shim.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

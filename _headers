@@ -1,0 +1,5 @@
+/api/execucao/*/excel
+  Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+  Content-Disposition: attachment; filename="Termometro LOG20.xlsx"
+/api/execucao/*/imagem
+  Content-Type: image/png
