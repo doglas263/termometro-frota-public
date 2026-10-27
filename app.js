@@ -395,6 +395,14 @@
     cards.innerHTML = "";
     const c1 = el("div", "card accent"); c1.appendChild(el("div", "v", linhas.length)); c1.appendChild(el("div", "l", "CDDs LOG20")); cards.appendChild(c1);
     const c2 = el("div", "card accent"); c2.appendChild(el("div", "v", fmtPt(media))); c2.appendChild(el("div", "l", "Media geral (panorama)")); cards.appendChild(c2);
+    ["T1", "T2"].forEach((tier) => {
+      const doTier = linhas.filter((l) => l.tier === tier);
+      const mediaTier = doTier.length ? doTier.reduce((s, l) => s + l.panorama_medio, 0) / doTier.length : null;
+      const ct = el("div", "card accent");
+      ct.appendChild(el("div", "v", fmtPt(mediaTier)));
+      ct.appendChild(el("div", "l", `Media geral ${tier} (${doTier.length} ${doTier.length === 1 ? "CDD" : "CDDs"})`));
+      cards.appendChild(ct);
+    });
     if (melhor) {
       const c3 = el("div", "card accent"); c3.appendChild(el("div", "v", nomeBonito(melhor.cdd))); c3.appendChild(el("div", "l", "Melhor colocado")); cards.appendChild(c3);
     }
